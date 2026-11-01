@@ -218,6 +218,25 @@ class SaleInvoiceForm(forms.ModelForm):
         Solo si la compañía requiere PIN.
         """
         cleaned_data = super().clean()
+        status = cleaned_data.get('status')
+        if status == 'PAID':
+            company = None
+            if self.instance and self.instance.company_id:
+                company = self.instance.company
+            elif self._request:
+                company = getattr(self._request, 'current_company', None)
+            if not company:
+                company = Company.get_active()
+
+            if company:
+                rate = ExchangeRate.get_today_rate('USD', 'BS', company)
+                if not rate or rate <= 0:
+                    raise ValidationError(
+                        '❌ No hay tasa de cambio configurada para hoy. '
+                        'No se puede marcar la factura como Pagada. '
+                        'Pide a la contadora que registre la tasa en '
+                        'Contabilidad > Tasas de Cambio.'
+                    )
         pin = cleaned_data.get('pin', '').strip()
         salesperson = cleaned_data.get('salesperson')
         
@@ -1508,7 +1527,7 @@ class SaleOrderForm(forms.ModelForm):
         
         company = self.instance.company or Company.get_active()
         from django_erp.accounting.services import TaxService
-        tax_rate = TaxService.get_current_vat_rate(company) if company else Decimal('16.00')
+        tax_rate = TaxService.get_current_vat_rate(company) if company else Decimal('0.00')
         rate = ExchangeRate.get_today_rate('USD', 'BS')
         
         if rate:
@@ -1807,7 +1826,7 @@ class SaleOrderAdmin(CompanyFilterMixin, UnfoldModelAdmin):
         
         company = obj.company or Company.get_active()
         from django_erp.accounting.services import TaxService
-        tax_rate = TaxService.get_current_vat_rate(company) if company else Decimal('16.00')
+        tax_rate = TaxService.get_current_vat_rate(company) if company else Decimal('0.00')
         
         tax = subtotal * (tax_rate / Decimal('100'))
         total = subtotal + tax

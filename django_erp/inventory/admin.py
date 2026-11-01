@@ -337,20 +337,22 @@ class InventoryAdmin(CompanyFilterMixin, UnfoldModelAdmin):
     def get_exchange_rate(self, request=None):
         """
         Obtener la tasa de cambio del día (con cache por request).
-        
-        Evita 1 query por fila: se calcula 1 vez y se reutiliza.
+        Cachea en `request` para evitar contaminación entre requests concurrentes.
         """
-        if hasattr(self, '_cached_rate'):
-            return self._cached_rate
+        if request is not None and hasattr(request, '_erp_exchange_rate'):
+            return request._erp_exchange_rate
 
         try:
-            rate = ExchangeRate.get_today_rate('USD', 'BS')
-            self._cached_rate = float(rate) if rate else 0
+            company = getattr(request, 'current_company', None) if request else None
+            rate = ExchangeRate.get_today_rate('USD', 'BS', company) if company else ExchangeRate.get_today_rate('USD', 'BS')
+            result = float(rate) if rate and float(rate) > 0 else 0
         except Exception as e:
             logger.error(f"Error obteniendo tasa de cambio: {e}")
-            self._cached_rate = 0
+            result = 0
 
-        return self._cached_rate
+        if request is not None:
+            request._erp_exchange_rate = result
+        return result
     
     # ============================================================
     # MÉTODOS PARA MOSTRAR LOS DATOS
@@ -372,9 +374,9 @@ class InventoryAdmin(CompanyFilterMixin, UnfoldModelAdmin):
     def total_exits_display(self, obj):
         return obj._total_exits
         
-        @admin.display(description='Stock', ordering='quantity')
-        def quantity_display(self, obj):
-            return obj.quantity
+    @admin.display(description='Stock', ordering='quantity')
+    def quantity_display(self, obj):
+        return obj.quantity
     
     # ============================================================
     # PRECIO DE COMPRA (USD y Bs.)
@@ -412,7 +414,7 @@ class InventoryAdmin(CompanyFilterMixin, UnfoldModelAdmin):
         extra_context = extra_context or {}
 
         # ✅ Inicializar cache (se rellena la primera vez que se llame a get_exchange_rate)
-        self._cached_rate = None
+        #self._cached_rate = None
 
         queryset = self.get_queryset(request)
 

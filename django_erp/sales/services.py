@@ -231,7 +231,7 @@ class SaleService:
             logger.info(f"   📝 Número de factura generado: {number}")
             
             from django_erp.accounting.services import TaxService
-            tax_rate = TaxService.get_current_vat_rate(company) if company else Decimal('16.00')
+            tax_rate = TaxService.get_current_vat_rate(company) if company else Decimal('0.00')
             
             # ✅ Crear la factura
             invoice = SaleInvoice.objects.create(
@@ -422,7 +422,7 @@ class SaleInvoiceService:
         logger.info(f"   Número de factura generado: {number}")
         
         from django_erp.accounting.services import TaxService
-        tax_rate = TaxService.get_current_vat_rate(company) if company else Decimal('16.00')
+        tax_rate = TaxService.get_current_vat_rate(company) if company else Decimal('0.00')
         
         invoice = SaleInvoice.objects.create(
             number=number,
@@ -679,7 +679,7 @@ class SaleInvoiceProcessingService:
             for line in invoice.lines.all():
                 subtotal += Decimal(str(line.subtotal))
             
-            tax_rate = TaxService.get_current_vat_rate(company) if company else Decimal('16.00')
+            tax_rate = TaxService.get_current_vat_rate(company) if company else Decimal('0.00')
             tax = subtotal * (tax_rate / Decimal('100'))
             total = subtotal + tax
             

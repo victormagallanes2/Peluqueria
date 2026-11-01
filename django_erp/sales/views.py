@@ -256,6 +256,15 @@ def pos_checkout(request):
     if not company:
         return JsonResponse({'error': 'No hay compañía activa'}, status=400)
 
+    # ✅ BLOQUEO: no facturar sin tasa de cambio
+    rate = ExchangeRate.get_today_rate('USD', 'BS', company)
+    if not rate or rate <= 0:
+        return JsonResponse(
+            {'error': 'No hay tasa de cambio configurada para hoy. '
+                      'Contacta al administrador antes de facturar.'},
+            status=400
+        )
+
     # ✅ Validar vendedor si la compañía lo requiere
     # requires_salesperson = bool(
     #     getattr(company, 'commission_enabled', False)
@@ -336,7 +345,7 @@ def pos_checkout(request):
                     )
 
             # ✅ 5. Crear factura CON salesperson
-            tax_rate = TaxService.get_current_vat_rate(company) if company else Decimal('16.00')
+            tax_rate = TaxService.get_current_vat_rate(company) if company else Decimal('0.00')
 
             invoice = SaleInvoice.objects.create(
                 number=number,

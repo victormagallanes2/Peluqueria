@@ -17,6 +17,7 @@ from django.utils.translation import gettext_lazy as _
 from dotenv import load_dotenv
 from django.core.exceptions import ImproperlyConfigured
 import dj_database_url
+from django.templatetags.static import static
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -168,16 +169,34 @@ SIMPLE_HISTORY_REVERT_DISABLED = False
 
 
 
+def _erp_config_data_uri(request):
+    import base64
+    import json
+    from django_erp.configuration.context_processors import build_erp_config_for_request
+    try:
+        cfg = build_erp_config_for_request(request)
+        js = f"window.ERP_CONFIG = {json.dumps(cfg)};"
+    except Exception:
+        js = "window.ERP_CONFIG = {};"
+    b64 = base64.b64encode(js.encode('utf-8')).decode('ascii')
+    return f"data:text/javascript;base64,{b64}"
+
+
 # ✅ Configuración de UNFOLD
 UNFOLD = {
     "SITE_TITLE": "Sistema ERP",
     "SITE_HEADER": "Modulos",
     "SITE_URL": "/",
-    
+
+    "SCRIPTS": [
+        lambda request: static("admin/js/erp_utils.js"),
+        lambda request: _erp_config_data_uri(request),
+    ],
+
     "MENU": {
         "ENABLED": False,
     },
-    
+
     "SIDEBAR": {
         "show_search": False,
         "show_all_applications": False,

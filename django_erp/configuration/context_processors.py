@@ -5,6 +5,7 @@ from django.core.serializers.json import DjangoJSONEncoder
 from django_erp.configuration.models import Company
 from django_erp.accounting.models import ExchangeRate
 from django_erp.accounting.services import TaxService
+from django_erp.accounting.services import CurrencyService
 
 logger = logging.getLogger(__name__)
 
@@ -48,7 +49,7 @@ def erp_config(request):
     # ============================================================
     # Tasa de cambio y datos de la compañía activa
     # ============================================================
-    rate = ExchangeRate.get_today_rate('USD', 'BS')
+    rate = ExchangeRate.get_today_rate('USD', 'BS', company) if company else None
     
     tax_rate = 0.0
     company_name = ""
@@ -64,7 +65,7 @@ def erp_config(request):
         'exchange_rate': float(rate) if rate else 0,
         'company_name': company_name,
         'company_rif': company_rif,
-        'currency_symbol': '$',
+        'currency_symbol': CurrencyService.get_base_symbol(),
     }
 
     # Serializar a JSON para inyectar en el template
@@ -81,4 +82,35 @@ def erp_config(request):
         'current_company': company,
         'ERP_CONFIG': erp_config_dict,
         'ERP_CONFIG_JSON': erp_config_json,
+    }
+
+
+def build_erp_config_for_request(request):
+    """Devuelve solo el dict ERP_CONFIG, para usarlo en settings.UNFOLD['SCRIPTS']."""
+    company = getattr(request, 'current_company', None)
+    if not company and request.session.get('active_company_id'):
+        try:
+            company = Company.objects.get(
+                id=request.session['active_company_id'], is_active=True
+            )
+        except Company.DoesNotExist:
+            pass
+    if not company:
+        company = Company.get_main_company()
+
+    rate = ExchangeRate.get_today_rate('USD', 'BS', company) if company else None
+    tax_rate = 0.0
+    company_name = ''
+    company_rif = ''
+    if company:
+        tax_rate = float(TaxService.get_current_vat_rate(company))
+        company_name = company.name
+        company_rif = company.rif
+
+    return {
+        'tax_rate': tax_rate,
+        'exchange_rate': float(rate) if rate else 0,
+        'company_name': company_name,
+        'company_rif': company_rif,
+        'currency_symbol': CurrencyService.get_base_symbol(),
     }

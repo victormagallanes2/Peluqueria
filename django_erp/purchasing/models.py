@@ -133,7 +133,7 @@ class PurchaseOrder(models.Model):
     tax_rate = models.DecimalField(
         max_digits=5, 
         decimal_places=2, 
-        default=Decimal('16.00'),  # ✅ Decimal, no float
+        default=Decimal('0.00'),  # ✅ Decimal, no float
         verbose_name="Tasa IVA (%)"
     )
     tax = models.DecimalField(
@@ -230,7 +230,7 @@ class PurchaseOrder(models.Model):
             if not self.tax_rate or self.tax_rate == 0:
                 company = Company.get_active()
                 from django_erp.accounting.services import TaxService
-                tax_rate = TaxService.get_current_vat_rate(company) if company else Decimal('16.00')
+                tax_rate = TaxService.get_current_vat_rate(company) if company else Decimal('0.00')
         
         # ✅ Guardar primero para tener ID
         super().save(*args, **kwargs)
