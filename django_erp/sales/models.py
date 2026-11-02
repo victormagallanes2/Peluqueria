@@ -542,22 +542,11 @@ class CashRegister(models.Model):
 
     def save(self, *args, **kwargs):
         if not self.number:
-            from datetime import datetime
-            date_str = datetime.now().strftime('%Y%m%d')
-            last = CashRegister.objects.filter(
-                number__startswith=f'CAJA-{date_str}'
-            ).order_by('number').last()
-            
-            if last:
-                try:
-                    last_num = int(last.number.split('-')[-1])
-                    next_num = last_num + 1
-                except (ValueError, IndexError):
-                    next_num = 1
-            else:
-                next_num = 1
-            
-            self.number = f'CAJA-{date_str}-{next_num:04d}'
+            from django_erp.configuration.models import DocumentSequence
+            self.number = DocumentSequence.get_next(
+                company=self.company,
+                document_type='CASH_REGISTER',
+            )
         
         if self.status == 'OPEN':
             existing_open = CashRegister.objects.filter(

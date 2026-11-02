@@ -216,18 +216,12 @@ class SaleService:
                 return order
             
             # ✅ Generar número de factura
+            from django_erp.configuration.models import DocumentSequence
+            number = DocumentSequence.get_next(
+                company=company,
+                document_type='SALE_INVOICE',
+            )
             from datetime import datetime
-            last_invoice = SaleInvoice.objects.order_by('-id').first()
-            if last_invoice and last_invoice.number:
-                try:
-                    last_num = int(last_invoice.number.split('-')[-1])
-                    next_num = last_num + 1
-                except (ValueError, IndexError):
-                    next_num = 1
-            else:
-                next_num = 1
-            
-            number = f"FAC-VENTA-{datetime.now().strftime('%Y%m')}-{next_num:04d}"
             logger.info(f"   📝 Número de factura generado: {number}")
             
             from django_erp.accounting.services import TaxService
@@ -408,17 +402,11 @@ class SaleInvoiceService:
         logger.info(f"   Compañía: {company.code} - {company.name}")
         
         # Generar número de factura
-        last_invoice = SaleInvoice.objects.order_by('-id').first()
-        if last_invoice and last_invoice.number:
-            try:
-                last_num = int(last_invoice.number.split('-')[-1])
-                next_num = last_num + 1
-            except (ValueError, IndexError):
-                next_num = 1
-        else:
-            next_num = 1
-        
-        number = f"FAC-VENTA-{datetime.now().strftime('%Y%m')}-{next_num:04d}"
+        from django_erp.configuration.models import DocumentSequence
+        number = DocumentSequence.get_next(
+            company=company,
+            document_type='SALE_INVOICE',
+        )
         logger.info(f"   Número de factura generado: {number}")
         
         from django_erp.accounting.services import TaxService
@@ -489,6 +477,31 @@ class SaleReportService:
             Company | None
         """
         return company or Company.get_active()
+
+
+    @staticmethod
+    def _get_invoices_queryset(company=None):
+        """
+        Devuelve el queryset base de facturas pagadas para reportes.
+
+        - Filtra por `status__in = PAID_STATUSES` (solo PAID).
+        - Si se pasa `company` (o hay una activa), filtra por compañía.
+        - Ordena por fecha de emisión descendente.
+
+        Returns:
+            QuerySet[SaleInvoice]
+        """
+        queryset = SaleInvoice.objects.filter(
+            status__in=SaleReportService.PAID_STATUSES,
+        )
+
+        resolved_company = SaleReportService._resolve_company(company)
+        if resolved_company:
+            queryset = queryset.filter(company=resolved_company)
+
+        return queryset.order_by('-date_issued', '-created_at')
+
+
 
     @staticmethod
     def get_totals_by_period(period_type='day', days_back=30, company=None):

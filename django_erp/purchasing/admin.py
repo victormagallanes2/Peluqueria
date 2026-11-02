@@ -470,18 +470,13 @@ class PurchaseOrderForm(forms.ModelForm):
                 ]
         else:
             # Para nuevas órdenes
-            from datetime import datetime
-            last_order = PurchaseOrder.objects.order_by('-id').first()
-            if last_order and last_order.number:
-                try:
-                    last_num = int(last_order.number.split('-')[-1])
-                    next_num = last_num + 1
-                except (ValueError, IndexError):
-                    next_num = 1
-            else:
-                next_num = 1
-
-            self.initial['number'] = f"COMPRA-{datetime.now().strftime('%Y%m%d')}-{next_num:04d}"
+            from django_erp.configuration.models import DocumentSequence
+            _company = getattr(self.instance, 'company', None) or Company.get_active()
+            if _company:
+                self.initial['number'] = DocumentSequence.get_next(
+                    company=_company,
+                    document_type='PURCHASE_ORDER',
+                )
             self.fields['number'].disabled = True
             self.initial['status'] = 'DRAFT'
             self.fields['status'].choices = [
@@ -947,18 +942,13 @@ class PurchaseInvoiceForm(forms.ModelForm):
         
         # ✅ Si es una nueva factura, generar número automáticamente (IGUAL QUE VENTAS)
         if not instance or not instance.pk:
-            from datetime import datetime
-            last_invoice = PurchaseInvoice.objects.order_by('-id').first()
-            if last_invoice and last_invoice.number:
-                try:
-                    last_num = int(last_invoice.number.split('-')[-1])
-                    next_num = last_num + 1
-                except (ValueError, IndexError):
-                    next_num = 1
-            else:
-                next_num = 1
-            
-            self.initial['number'] = f"FAC-COMPRA-{datetime.now().strftime('%Y%m')}-{next_num:04d}"
+            from django_erp.configuration.models import DocumentSequence
+            _company = getattr(self.instance, 'company', None) or Company.get_active()
+            if _company:
+                self.initial['number'] = DocumentSequence.get_next(
+                    company=_company,
+                    document_type='PURCHASE_INVOICE',
+                )
             self.initial['status'] = 'PAID'
             
             # ✅ Inicializar totales en 0

@@ -165,18 +165,13 @@ class SaleInvoiceForm(forms.ModelForm):
         
         # ✅ Si es una nueva factura, generar número automáticamente
         if not instance or not instance.pk:
-            from datetime import datetime
-            last_invoice = SaleInvoice.objects.order_by('-id').first()
-            if last_invoice and last_invoice.number:
-                try:
-                    last_num = int(last_invoice.number.split('-')[-1])
-                    next_num = last_num + 1
-                except (ValueError, IndexError):
-                    next_num = 1
-            else:
-                next_num = 1
-            
-            self.initial['number'] = f"FAC-VENTA-{datetime.now().strftime('%Y%m')}-{next_num:04d}"
+            from django_erp.configuration.models import DocumentSequence
+            _company = getattr(self.instance, 'company', None) or Company.get_active()
+            if _company:
+                self.initial['number'] = DocumentSequence.get_next(
+                    company=_company,
+                    document_type='SALE_INVOICE',
+                )
             self.initial['status'] = 'PAID'
             
             customer_id = self._request.GET.get('customer') if self._request else None
@@ -1525,7 +1520,7 @@ class SaleOrderForm(forms.ModelForm):
                 if fallback:
                     self.instance.company = fallback
         
-        company = self.instance.company or Company.get_active()
+        company = getattr(self.instance, 'company', None) or Company.get_active()
         from django_erp.accounting.services import TaxService
         tax_rate = TaxService.get_current_vat_rate(company) if company else Decimal('0.00')
         rate = ExchangeRate.get_today_rate('USD', 'BS')
@@ -1557,18 +1552,13 @@ class SaleOrderForm(forms.ModelForm):
             self.initial['total_bs_display'] = "0.00"
         
         if not instance or not instance.pk:
-            from datetime import datetime
-            last_order = SaleOrder.objects.order_by('-id').first()
-            if last_order and last_order.number:
-                try:
-                    last_num = int(last_order.number.split('-')[-1])
-                    next_num = last_num + 1
-                except (ValueError, IndexError):
-                    next_num = 1
-            else:
-                next_num = 1
-            
-            self.initial['number'] = f"VENTA-{datetime.now().strftime('%Y%m%d')}-{next_num:04d}"
+            from django_erp.configuration.models import DocumentSequence
+            _company = getattr(self.instance, 'company', None) or Company.get_active()
+            if _company:
+                self.initial['number'] = DocumentSequence.get_next(
+                    company=_company,
+                    document_type='SALE_ORDER',
+                )
             self.fields['number'].disabled = True
             self.initial['status'] = 'DRAFT'
             self.fields['status'].choices = [

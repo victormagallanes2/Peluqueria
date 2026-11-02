@@ -635,5 +635,35 @@ def load_all():
     print()
 
 
+# ============================================================
+# SECUENCIAS DE DOCUMENTOS (Bug 10)
+# ============================================================
+
+SEQUENCES_CONFIG = [
+    # (document_type, prefix, period_format)
+    ('SALE_INVOICE',     'FAC-VENTA',  '%Y'),
+    ('PURCHASE_INVOICE', 'FAC-COMPRA', '%Y'),
+    ('SALE_ORDER',       'ORD-VENTA',  '%Y'),
+    ('PURCHASE_ORDER',   'ORD-COMPRA', '%Y'),
+    ('DELIVERY_NOTE',    'NOTA-ENT',   '%Y'),
+    ('RECEIPT_NOTE',     'NOTA-REC',   '%Y'),
+    ('CASH_REGISTER',    'CAJA',       '%Y'),
+]
+
+from django_erp.configuration.models import DocumentSequence
+
+for company in Company.objects.filter(is_active=True):
+    for doc_type, prefix, period_format in SEQUENCES_CONFIG:
+        DocumentSequence.objects.get_or_create(
+            company=company,
+            document_type=doc_type,
+            defaults={
+                'prefix': prefix,
+                'period_format': period_format,
+            },
+        )
+    print(f"  ✅ Secuencias creadas para {company.code}")
+
+
 if __name__ == "__main__":
     load_all()

@@ -253,7 +253,7 @@ EMPLOYEES_DATA = [
     }},
     {"username": "liz", "fields": {
         "password": "123456", "email": "liz@company.com",
-        "first_name": "Liz", "last_name": "Guerrero",
+        "first_name": "Liz", "last_name": "Magallanes",
         "is_superuser": False, "is_staff": True, "is_active": True,
         "is_employee": True,
         "company_codes": ["01", "02"],

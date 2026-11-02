@@ -304,18 +304,11 @@ def pos_checkout(request):
                 return JsonResponse({'error': str(e)}, status=400)
 
             # ✅ 2. Generar número de factura
-            from datetime import datetime
-            last_invoice = SaleInvoice.objects.order_by('-id').first()
-            if last_invoice and last_invoice.number:
-                try:
-                    last_num = int(last_invoice.number.split('-')[-1])
-                    next_num = last_num + 1
-                except (ValueError, IndexError):
-                    next_num = 1
-            else:
-                next_num = 1
-
-            number = f"FAC-VENTA-{datetime.now().strftime('%Y%m')}-{next_num:04d}"
+            from django_erp.configuration.models import DocumentSequence
+            number = DocumentSequence.get_next(
+                company=company,
+                document_type='SALE_INVOICE',
+            )
 
             # ✅ 3. Validar método único (si aplica) ANTES de crear la factura
             single_method = None

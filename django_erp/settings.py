@@ -98,19 +98,14 @@ if not SECRET_KEY:
     raise ImproperlyConfigured("Falta SECRET_KEY en .env")
 
 DATABASES = {
-    # ✅ Base de datos PRINCIPAL (SQLite para desarrollo)
+
     'default': dj_database_url.config(
         default=os.getenv('DATABASE_URL'),
-        conn_max_age=600,           # reutiliza conexiones 10 min
-        conn_health_checks=True,    # valida que la conexión siga viva
+        conn_max_age=600,           
+        conn_health_checks=True,    
         # ssl_require=not DEBUG,
     )
     
-    # ✅ Base de datos LOCAL (SQLite - para pruebas offline)
-#     'local': {
-#         'ENGINE': 'django.db.backends.sqlite3',
-#         'NAME': BASE_DIR / 'db_local.sqlite3',
-#     }
  }
 
 # ✅ ROUTER para decidir qué base de datos usar

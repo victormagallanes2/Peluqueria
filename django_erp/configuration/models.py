@@ -461,3 +461,141 @@ class CompanyBankAccount(models.Model):
         if company:
             return cls.objects.filter(is_default=True, is_active=True, company=company).first()
         return None
+
+# ============================================================
+# SECUENCIAS DE DOCUMENTOS (Bug 10)
+# ============================================================
+
+def _build_seq_name(company_code, document_type, period):
+    """
+    Construye el nombre de la secuencia PostgreSQL.
+
+    Ejemplos:
+        seq_pel01_sale_invoice_2026
+        seq_pel01_cash_register_2026
+        seq_pel01_sale_invoice           (si period_format='')
+    """
+    parts = [
+        str(company_code).lower().replace('-', '_'),
+        str(document_type).lower(),
+    ]
+    if period:
+        parts.append(str(period))
+    return 'seq_' + '_'.join(parts)
+
+
+class DocumentSequence(models.Model):
+    """
+    Configuración de secuencias correlativas por compañía y tipo de documento.
+
+    La numeración real la provee PostgreSQL vía `CREATE SEQUENCE` + `nextval()`,
+    lo cual es atómico a nivel de motor. Los gaps son aceptables (Odoo "Standard").
+    """
+
+    DOCUMENT_TYPES = [
+        ('SALE_INVOICE',     'Factura de Venta'),
+        ('PURCHASE_INVOICE', 'Factura de Compra'),
+        ('SALE_ORDER',       'Orden de Venta'),
+        ('PURCHASE_ORDER',   'Orden de Compra'),
+        ('DELIVERY_NOTE',    'Nota de Entrega'),
+        ('RECEIPT_NOTE',     'Nota de Recibo'),
+        ('CASH_REGISTER',    'Cierre de Caja'),
+    ]
+
+    company = models.ForeignKey(
+        Company,
+        on_delete=models.CASCADE,
+        related_name='document_sequences',
+        verbose_name="Compañía",
+    )
+    document_type = models.CharField(
+        max_length=30,
+        choices=DOCUMENT_TYPES,
+        verbose_name="Tipo de documento",
+    )
+    prefix = models.CharField(
+        max_length=20,
+        verbose_name="Prefijo",
+        help_text="Ej: FAC-VENTA, ORD-COMPRA",
+    )
+    period_format = models.CharField(
+        max_length=20,
+        default='%Y',
+        blank=True,
+        verbose_name="Formato de período",
+        help_text="strftime: '%Y' (anual), '%Y%m' (mensual), '' (sin período)",
+    )
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Secuencia de Documento"
+        verbose_name_plural = "Secuencias de Documentos"
+        unique_together = [['company', 'document_type']]
+        ordering = ['company__code', 'document_type']
+
+    def __str__(self):
+        return f"{self.prefix} ({self.company.code})"
+
+    @classmethod
+    def get_next(cls, company, document_type, prefix=None, period_format=None):
+        """
+        Devuelve el siguiente número correlativo, atómicamente.
+
+        Args:
+            company: instancia de Company (requerido)
+            document_type: clave de DOCUMENT_TYPES (requerido)
+            prefix: si se pasa, sobreescribe el de la BD
+            period_format: si se pasa, sobreescribe el de la BD
+
+        Returns:
+            str: número formateado, ej "FAC-VENTA-2026-00001"
+        """
+        from django.db import connection
+        from datetime import datetime
+
+        if connection.vendor != 'postgresql':
+            raise RuntimeError(
+                "DocumentSequence solo soporta PostgreSQL. "
+                f"Motor detectado: {connection.vendor}"
+            )
+
+        if not company:
+            raise ValueError(
+                "`company` es requerido para DocumentSequence.get_next()"
+            )
+
+        # 1. Obtener (o crear) el registro de configuración
+        defaults = {
+            'prefix': prefix or document_type,
+            'period_format': period_format if period_format is not None else '%Y',
+        }
+        seq_config, _ = cls.objects.get_or_create(
+            company=company,
+            document_type=document_type,
+            defaults=defaults,
+        )
+
+        # 2. Calcular el período actual (ej: "2026")
+        period = (
+            datetime.now().strftime(seq_config.period_format)
+            if seq_config.period_format else ''
+        )
+
+        # 3. Nombre de la secuencia PostgreSQL
+        seq_name = _build_seq_name(company.code, document_type, period)
+
+        # 4. Crear la secuencia si no existe y obtener el siguiente valor
+        with connection.cursor() as cursor:
+            cursor.execute(
+                f'CREATE SEQUENCE IF NOT EXISTS "{seq_name}" '
+                f'START WITH 1 INCREMENT BY 1 NO CYCLE'
+            )
+            cursor.execute(f'SELECT nextval(\'"{seq_name}"\')')
+            next_num = cursor.fetchone()[0]
+
+        # 5. Formatear con 5 dígitos
+        if period:
+            return f"{seq_config.prefix}-{period}-{next_num:05d}"
+        return f"{seq_config.prefix}-{next_num:05d}"

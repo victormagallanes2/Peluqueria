@@ -48,7 +48,7 @@ Diseñado inicialmente para la gestión de Almancén, inventario, compras, venta
 
 Datos obligatorios para que el proyecto funcione adecuadamente esto incluye, monedas, metodos de pago, grupos y permisos. Situarse donde esta el archivo manage.py y ejecutar:
 
-  - python -m django_erp.configuration.data.load_data
+  - python -m django_erp.configuration.data.load_data_dev
 
 
 1. Una vez dentro en configuracion - Tasa de cambio, establecer la tasa de cambio al dia segun el bcv.
@@ -74,6 +74,31 @@ Datos obligatorios para que el proyecto funcione adecuadamente esto incluye, mon
 - Se crean los modelos y se usa el admin para las interfaces y el CRUD, usar librerias que trae unfold por defecto en su core ejemplo widget, inlineform, Graficos Chart.js etc.. este es el link de la documentacion: https://unfoldadmin.com/docs/installation/quickstart/
 - Si vas a usar IA como apoyo se recomienda pasar todo el proyecto en un txt para ello se usa gitingest, esto es para que la ia tenga contexto, ademas se recomienda solo crear partes estrictamente supervisada y tener cuidado de no romper lo existente y por ultimo no hacer chat extensos ya que llega un momento en que la IA tiene alucinaciones, entonces es mejor iniciar un chat nuevo y volver a pasar el proyecto actualizado con los ultimos cambios aprobados.
 - Los menus se crean en el settings.py en el diccionario UNFOLD
+
+
+
+-- 1. Si la base de datos aún no existe, créala primero (si ya existe, omite este paso)
+CREATE DATABASE django_erp2;
+
+-- 2. Crear usuario erp_user y establecer contraseña
+CREATE USER erp_user WITH PASSWORD '123456';
+
+-- 3. Otorgar permiso de conexión a la base de datos
+GRANT CONNECT ON DATABASE django_erp2 TO erp_user;
+
+-- 4. Cambiar a la base de datos de destino (para otorgar permisos a nivel de esquema)
+\c django_erp2
+
+-- 5. Otorgar permiso de uso y creación en el esquema public (Django necesita crear tablas)
+GRANT ALL ON SCHEMA public TO erp_user;
+
+-- 6. Otorgar permisos sobre todas las tablas y secuencias existentes (por si se ejecuta repetidamente)
+GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO erp_user;
+GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO erp_user;
+
+-- 7. Configurar permisos predeterminados para tablas creadas posteriormente (esencial para las migraciones de Django)
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO erp_user;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO erp_user;
 
 
 

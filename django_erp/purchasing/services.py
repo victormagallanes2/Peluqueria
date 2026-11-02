@@ -305,17 +305,11 @@ class PurchaseInvoiceService:
         
         logger.info(f"   Compañía: {company.code} - {company.name}")
         
-        last_invoice = PurchaseInvoice.objects.order_by('-id').first()
-        if last_invoice and last_invoice.number:
-            try:
-                last_num = int(last_invoice.number.split('-')[-1])
-                next_num = last_num + 1
-            except (ValueError, IndexError):
-                next_num = 1
-        else:
-            next_num = 1
-        
-        number = f"FAC-COMPRA-{datetime.now().strftime('%Y%m')}-{next_num:04d}"
+        from django_erp.configuration.models import DocumentSequence
+        number = DocumentSequence.get_next(
+            company=company,
+            document_type='PURCHASE_INVOICE',
+        )
         logger.info(f"   Número de factura generado: {number}")
         
         invoice = PurchaseInvoice.objects.create(

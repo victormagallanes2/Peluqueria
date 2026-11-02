@@ -510,17 +510,11 @@ class DeliveryNote(models.Model):
 
     def save(self, *args, **kwargs):
         if not self.number:
-            from datetime import datetime
-            last_note = DeliveryNote.objects.order_by('-id').first()
-            if last_note and last_note.number:
-                try:
-                    last_num = int(last_note.number.split('-')[-1])
-                    next_num = last_num + 1
-                except (ValueError, IndexError):
-                    next_num = 1
-            else:
-                next_num = 1
-            self.number = f"ENTREGA-{datetime.now().strftime('%Y%m%d')}-{next_num:04d}"
+            from django_erp.configuration.models import DocumentSequence
+            self.number = DocumentSequence.get_next(
+                company=self.company,
+                document_type='DELIVERY_NOTE',
+            )
         super().save(*args, **kwargs)
 
 
@@ -620,17 +614,11 @@ class ReceiptNote(models.Model):
 
     def save(self, *args, **kwargs):
         if not self.number:
-            from datetime import datetime
-            last_note = ReceiptNote.objects.order_by('-id').first()
-            if last_note and last_note.number:
-                try:
-                    last_num = int(last_note.number.split('-')[-1])
-                    next_num = last_num + 1
-                except (ValueError, IndexError):
-                    next_num = 1
-            else:
-                next_num = 1
-            self.number = f"RECIBO-{datetime.now().strftime('%Y%m%d')}-{next_num:04d}"
+            from django_erp.configuration.models import DocumentSequence
+            self.number = DocumentSequence.get_next(
+                company=self.company,
+                document_type='RECEIPT_NOTE',
+            )
         super().save(*args, **kwargs)
 
 
