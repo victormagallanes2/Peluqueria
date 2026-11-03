@@ -8,6 +8,4 @@ class SalesConfig(AppConfig):
     verbose_name = 'Ventas'
     
     def ready(self):
-        #  Importar signals para conectar
         import django_erp.sales.signals
-        print("Sales signals loaded and connected")

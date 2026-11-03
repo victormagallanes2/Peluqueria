@@ -21,6 +21,7 @@ from django.conf.urls.static import static
 from django.views.decorators.http import require_http_methods
 from django.http import JsonResponse
 from django_erp.configuration import views
+from django_erp.web import views as web_views
 
 
 # ✅ Health Check para verificar conexión real
@@ -30,7 +31,9 @@ def health_check(request):
     return JsonResponse({'status': 'ok', 'timestamp': '2026-01-19'})
 
 urlpatterns = [
-    # ✅ Health Check (para detectar conexión real)
+    # Ruta limpia para la web principal del cliente
+    path('', web_views.web_page_view, {'slug': 'default'}, name='default'),
+    path('', include('django_erp.web.urls')),
     path('admin/inventory/', include('django_erp.inventory.urls')),
     path('admin/health-check/', health_check, name='health_check'),
     path('admin/sales/', include('django_erp.sales.urls')),

@@ -53,6 +53,8 @@ INSTALLED_APPS = [
     'django_erp.purchasing',
     'django_erp.accounting',
     'django_erp.rrhh',
+    'django_erp.web',
+    'django_erp.crm',
 ]
 
 MIDDLEWARE = [

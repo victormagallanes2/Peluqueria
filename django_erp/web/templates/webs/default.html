@@ -1,0 +1,50 @@
+{% extends "webs/base.html" %}
+
+{% block title %}Contáctanos - {{ page.name }}{% endblock %}
+
+{% block content %}
+
+<section class="hero">
+    <div class="container">
+        <h1>Bienvenido a {{ page.name }}</h1>
+        <p>Estamos aquí para ayudarte. Contáctanos y te responderemos pronto.</p>
+        <a href="#contact" class="cta">Contáctanos</a>
+    </div>
+</section>
+
+<section class="contact" id="contact">
+    <div class="container">
+        <h2>Contáctanos</h2>
+        <p class="subtitle">Déjanos tus datos y nos pondremos en contacto contigo.</p>
+
+        <div id="form-message" class="form-message"></div>
+
+        <form id="lead-form" action="{% url 'web:contact_form_submit' page.slug %}" method="post">
+            {% csrf_token %}
+
+            <div>
+                <label for="name">Nombre *</label>
+                <input type="text" id="name" name="name" required maxlength="200">
+            </div>
+
+            <div>
+                <label for="email">Email *</label>
+                <input type="email" id="email" name="email" required maxlength="200">
+            </div>
+
+            <div>
+                <label for="phone">Teléfono</label>
+                <input type="tel" id="phone" name="phone" maxlength="20">
+            </div>
+
+            <div>
+                <label for="message">Mensaje</label>
+                <textarea id="message" name="message" maxlength="2000"></textarea>
+            </div>
+
+            <button type="submit">Enviar mensaje</button>
+        </form>
+    </div>
+</section>
+
+{% endblock %}

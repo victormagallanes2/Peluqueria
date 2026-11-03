@@ -9,4 +9,3 @@ class PurchasingConfig(AppConfig):
     
     def ready(self):
         import django_erp.purchasing.signals
-        print("✅ Purchasing signals loaded")

@@ -235,7 +235,40 @@ def get_menu_items(request):
                 "collapsible": True,
                 "items": rrhh_items,
             })
-    
+
+    if user.has_perm('web.view_webpage'):
+        navigation.append({
+            "title": "Web",
+            "separator": True,
+            "collapsible": True,
+            "items": [
+                {
+                    "title": "Mis páginas",
+                    "icon": "web",
+                    "link": "/admin/web/webpage/",
+                },
+                {
+                    "title": "Visitas",
+                    "icon": "analytics",
+                    "link": "/admin/web/webpagevisit/",
+                },
+            ],
+        })
+
+
+    if user.has_perm('crm.view_lead'):
+        navigation.append({
+            "title": "CRM",
+            "separator": True,
+            "collapsible": True,
+            "items": [
+                {
+                    "title": "Leads",
+                    "icon": "person_search",
+                    "link": "/admin/crm/lead/",
+                },
+            ],
+        })
     # ============================================================
     # CONFIGURACIÓN (solo superuser)
     # ============================================================
