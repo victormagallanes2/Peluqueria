@@ -1,0 +1,181 @@
+{% extends "admin/base_site.html" %}
+{% load static i18n %}
+{% load crm_filters %}
+
+{% block title %}{{ title }} | {{ block.super }}{% endblock %}
+
+{% block extrastyle %}
+    {{ block.super }}
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
+    
+    <style>
+        .kanban-board { 
+            display: flex; 
+            gap: 1rem; 
+            overflow-x: auto; 
+            padding: 1.5rem 0; 
+            height: calc(100vh - 160px); 
+        }
+        .kanban-column { 
+            background: #f3f4f6; 
+            border-radius: 8px; 
+            min-width: 300px; 
+            display: flex; 
+            flex-direction: column; 
+            max-height: 100%; 
+            border: 1px solid #e5e7eb;
+        }
+        .kanban-header { 
+            padding: 1rem; 
+            font-weight: 700; 
+            text-transform: uppercase; 
+            font-size: 0.85rem; 
+            color: #374151; 
+            border-bottom: 1px solid #e5e7eb; 
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .kanban-cards { 
+            padding: 0.5rem; 
+            overflow-y: auto; 
+            flex: 1; 
+            min-height: 150px; 
+        }
+        
+        .kanban-card { 
+            background: white; 
+            border-radius: 6px; 
+            padding: 1rem; 
+            margin-bottom: 0.5rem; 
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1); 
+            cursor: grab; 
+            border-left: 4px solid #3b82f6; 
+        }
+        .kanban-card:active { cursor: grabbing; }
+        .kanban-card-title { 
+            font-weight: 600; 
+            color: #111827; 
+            margin-bottom: 0.25rem; 
+            font-size: 0.95rem;
+        }
+        .kanban-card-info { 
+            font-size: 0.8rem; 
+            color: #6b7280; 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+            margin-top: 0.5rem;
+        }
+        
+        .prio-HIGH { border-left-color: #ef4444; }
+        .prio-MEDIUM { border-left-color: #f59e0b; }
+        .prio-LOW { border-left-color: #10b981; }
+        
+        .sortable-ghost { opacity: 0.4; background: #bfdbfe; }
+    </style>
+{% endblock %}
+
+{% block content %}
+<div class="kanban-board">
+    {% for status_code, status_label in status_choices %}
+    <div class="kanban-column">
+        <div class="kanban-header">
+            <span>{{ status_label }}</span>
+            <span class="bg-gray-300 text-gray-700 py-0.5 px-2 rounded-full text-xs">
+                {{ columns|get_item:status_code|length }}
+            </span>
+        </div>
+        
+        <div class="kanban-cards" data-status="{{ status_code }}">
+            {% for lead in columns|get_item:status_code %}
+            <div class="kanban-card prio-{{ lead.priority }}" data-id="{{ lead.id }}">
+                <div class="kanban-card-title">{{ lead.name }}</div>
+                
+                <div class="kanban-card-info">
+                    <span class="font-bold text-gray-700">${{ lead.estimated_value|floatformat:2 }}</span>
+                    {% if lead.next_activity_date %}
+                        <span class="{% if lead.next_activity_date < today %}text-red-500 font-bold{% else %}text-gray-500{% endif %}">
+                            📅 {{ lead.next_activity_date|date:"d M" }}
+                        </span>
+                    {% endif %}
+                </div>
+
+                {% if not lead.converted_customer_id %}
+                <div style="margin-top: 0.75rem; border-top: 1px solid #f3f4f6; padding-top: 0.5rem; display: flex; justify-content: flex-end;">
+                    <button onclick="convertLead({{ lead.id }})" class="text-xs bg-green-100 text-green-700 font-bold py-1 px-2 rounded hover:bg-green-200 transition">
+                        ✓ Convertir a Cliente
+                    </button>
+                </div>
+                {% else %}
+                <div style="margin-top: 0.75rem; border-top: 1px solid #f3f4f6; padding-top: 0.5rem; text-align: center;">
+                    <span class="text-xs text-green-600 font-bold">⭐ Cliente: {{ lead.converted_customer.name }}</span>
+                </div>
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const columns = document.querySelectorAll('.kanban-cards');
+    
+    columns.forEach(col => {
+        new Sortable(col, {
+            group: 'shared',
+            animation: 150,
+            ghostClass: 'sortable-ghost',
+            onEnd: function (evt) {
+                const leadId = evt.item.dataset.id;
+                const newStatus = evt.to.dataset.status;
+                const oldStatus = evt.from.dataset.status;
+                
+                if (newStatus === oldStatus) return;
+                
+                fetch('{% url "admin:crm_update_status" %}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': '{{ csrf_token }}'
+                    },
+                    body: JSON.stringify({
+                        lead_id: leadId,
+                        status: newStatus
+                    })
+                }).then(res => res.json())
+                  .then(data => {
+                      if (!data.success) {
+                          alert('Error al mover la tarjeta. Recargando...');
+                          window.location.reload();
+                      }
+                  });
+            }
+        });
+    });
+});
+
+function convertLead(leadId) {
+    if (!confirm('¿Estás seguro de convertir este Lead en Cliente?')) return;
+
+    fetch('{% url "admin:crm_convert_lead" %}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': '{{ csrf_token }}'
+        },
+        body: JSON.stringify({ lead_id: leadId })
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.success) {
+            window.location.reload();
+        } else {
+            alert('Error: ' + data.error);
+        }
+    });
+}
+</script>
+{% endblock %}

@@ -267,6 +267,11 @@ def get_menu_items(request):
                     "icon": "person_search",
                     "link": "/admin/crm/lead/",
                 },
+                {
+                    "title": "Pipeline Kanban", # ✅ NUEVO ENLACE
+                    "icon": "view_kanban",
+                    "link": "/admin/crm/lead/kanban/",
+                },
             ],
         })
     # ============================================================

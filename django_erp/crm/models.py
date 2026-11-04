@@ -95,6 +95,20 @@ class Lead(models.Model):
         verbose_name="Compañía",
     )
 
+    estimated_value = models.DecimalField(
+        max_digits=10, decimal_places=2, default=0,
+        verbose_name="Valor estimado (USD)"
+    )
+    next_activity_date = models.DateField(
+        null=True, blank=True, verbose_name="Próxima actividad"
+    )
+    priority = models.CharField(
+        max_length=10,
+        choices=[('LOW', 'Baja'), ('MEDIUM', 'Media'), ('HIGH', 'Alta')],
+        default='MEDIUM',
+        verbose_name="Prioridad"
+    )
+
     created_at = models.DateTimeField(auto_now_add=True, verbose_name="Creado")
     updated_at = models.DateTimeField(auto_now=True, verbose_name="Actualizado")
 

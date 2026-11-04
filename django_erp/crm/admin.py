@@ -1,10 +1,36 @@
 from django.contrib import admin, messages
 from unfold.admin import ModelAdmin as UnfoldModelAdmin
-
 from django_erp.configuration.mixins import CompanyFilterMixin
-
 from .models import Lead
 from .services import LeadConversionService
+from django.urls import path
+from django.shortcuts import render
+from django.http import JsonResponse
+from django.views.decorators.http import require_POST
+import json
+
+
+
+@require_POST
+def convert_lead_ajax(request):
+    try:
+        data = json.loads(request.body)
+        lead_id = data.get('lead_id')
+        
+        lead = Lead.objects.get(id=lead_id)
+        
+        if lead.converted_customer_id:
+            return JsonResponse({'error': 'Este lead ya fue convertido'}, status=400)
+            
+        # Usamos el servicio de conversión
+        customer = LeadConversionService.convert_to_customer(lead, request.user)
+        
+        return JsonResponse({
+            'success': True, 
+            'customer_name': customer.name
+        })
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=400)
 
 
 @admin.register(Lead)
@@ -94,3 +120,52 @@ class LeadAdmin(CompanyFilterMixin, UnfoldModelAdmin):
                 f'{errors} lead(s) fallaron al convertir.',
                 messages.WARNING,
             )
+
+    def get_urls(self):
+        urls = super().get_urls()
+        custom_urls = [
+            path('kanban/', self.admin_site.admin_view(kanban_view), name='crm_lead_kanban'),
+            path('api/update-status/', self.admin_site.admin_view(update_lead_status), name='crm_update_status'),
+            path('api/convert/', self.admin_site.admin_view(convert_lead_ajax), name='crm_convert_lead'), # ✅ FALTABA ESTA
+        ]
+        return custom_urls + urls
+
+
+
+def kanban_view(request):
+    company = getattr(request, 'current_company', None)
+    leads = Lead.objects.all()
+    if company:
+        leads = leads.filter(company=company)
+    
+    columns = {status[0]: [] for status in Lead.STATUS_CHOICES}
+    for lead in leads:
+        columns[lead.status].append(lead)
+    
+    from django.utils import timezone
+    
+    context = {
+        'title': 'Pipeline Kanban',
+        'columns': columns,
+        'status_choices': Lead.STATUS_CHOICES,
+        'today': timezone.now().date(),
+        # ✅ ESTO ES LO QUE FALTABA PARA QUE UNFOLD DIBUJE EL MENÚ
+        **admin.site.each_context(request),
+    }
+    return render(request, 'admin/crm/kanban.html', context)
+
+# ✅ ENDPOINT PARA ACTUALIZAR EL ESTADO (AJAX)
+@require_POST
+def update_lead_status(request):
+    try:
+        data = json.loads(request.body)
+        lead_id = data.get('lead_id')
+        new_status = data.get('status')
+        
+        lead = Lead.objects.get(id=lead_id)
+        lead.status = new_status
+        lead.save(update_fields=['status', 'updated_at'])
+        
+        return JsonResponse({'success': True})
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=400)
