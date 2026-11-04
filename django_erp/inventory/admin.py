@@ -255,14 +255,11 @@ class MovementAdmin(CompanyFilterMixin, UnfoldModelAdmin, SimpleHistoryAdmin):
     
     fieldsets = (
         ('Movimiento', {
-            'fields': ('product', 'type', 'quantity', 'unit_price')
+            'fields': ('product', 'type', 'quantity', 'unit_price', 'source_type')
         }),
         ('Ubicaciones', {
             'fields': ('location_from', 'location_to'),
             'description': 'Para entradas solo se usa "Hasta". Para salidas solo "Desde". Para traslados ambos.'
-        }),
-        ('Información Adicional', {
-            'fields': ('source_type', 'source_reference', 'note')
         }),
     )
     
@@ -428,6 +425,7 @@ class MovementAdmin(CompanyFilterMixin, UnfoldModelAdmin, SimpleHistoryAdmin):
             # Ocultamos el input y ponemos un texto explicativo
             form.base_fields['unit_price'].disabled = True
             form.base_fields['unit_price'].help_text = "El costo se toma automáticamente de la ficha del producto."
+            form.base_fields['unit_price'].initial = 0 # Visualmente 0, el modelo lo corrige al guardar
         return form
 
 

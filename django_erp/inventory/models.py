@@ -257,6 +257,9 @@ class Movement(models.Model):
     def save(self, *args, **kwargs):
         if not self.uuid:
             self.uuid = uuid.uuid4()
+        # ✅ Si es una entrada manual sin precio, usar el costo de referencia del producto
+        if self.type == 'ENTRY' and self.product_id and not self.unit_price:
+            self.unit_price = self.product.purchase_price or Decimal('0.00')
         self.total = self.quantity * self.unit_price
         self.clean()
         super().save(*args, **kwargs)
