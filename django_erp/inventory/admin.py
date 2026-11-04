@@ -268,11 +268,123 @@ class MovementAdmin(CompanyFilterMixin, UnfoldModelAdmin, SimpleHistoryAdmin):
     
     def has_delete_permission(self, request, obj=None):
         return False
-    
+
+    def get_readonly_fields(self, request, obj=None):
+        if obj:  # edición: bloquear campos que afectan inventario
+            return ['product', 'type', 'quantity', 'unit_price',
+                    'location_from', 'location_to', 'company']
+        return ['total', 'user', 'created_at']  # creación: los de siempre
+
     def save_model(self, request, obj, form, change):
-        if not obj.user:
-            obj.user = request.user
-        super().save_model(request, obj, form, change)
+        """
+        Crear el movimiento manualmente delegando en WarehouseService.
+
+        Esto garantiza que:
+          - El Movement se cree.
+          - El Inventory se actualice atómicamente.
+          - Las salidas verifiquen stock antes de crearse.
+          - Los traslados creen los 2 movimientos hijos (EXIT + ENTRY).
+
+        ⚠️ En modo 'change' (edición) NO se re-aplica al inventario: los
+        movimientos son inmutables una vez creados. Solo se permite editar
+        campos descriptivos (nota, referencia).
+        """
+        from django_erp.inventory.services import WarehouseService
+        from django.core.exceptions import ValidationError
+
+        # ✅ Modo edición: solo permitir editar campos descriptivos
+        if change:
+            logger.info(
+                "🔴 [MovementAdmin.save_model] Editando movimiento %s (NO se re-aplica al inventario)",
+                obj.pk,
+            )
+            if not obj.user:
+                obj.user = request.user
+            super().save_model(request, obj, form, change)
+            return
+
+        # ✅ Modo creación: delegar en WarehouseService según el tipo
+        if not obj.company_id:
+            company = getattr(request, 'current_company', None) or Company.get_active()
+            if company:
+                obj.company = company
+            else:
+                raise ValidationError(
+                    "No hay una compañía activa. Configura una compañía antes de crear movimientos."
+                )
+
+        user = request.user
+
+        logger.info(
+            "🔴 [MovementAdmin.save_model] Creando movimiento tipo=%s producto=%s cantidad=%s",
+            obj.type, obj.product_id, obj.quantity,
+        )
+
+        if obj.type == 'ENTRY':
+            if not obj.location_to_id:
+                raise ValidationError("Las entradas requieren una ubicación de destino.")
+            movement = WarehouseService.create_entry(
+                product_id=obj.product_id,
+                quantity=obj.quantity,
+                location_to_id=obj.location_to_id,
+                unit_price=obj.unit_price or 0,
+                source_type=obj.source_type or 'MANUAL',
+                source_reference=obj.source_reference or '',
+                note=obj.note or '',
+                user=user,
+                company=obj.company,
+            )
+
+        elif obj.type == 'EXIT':
+            if not obj.location_from_id:
+                raise ValidationError("Las salidas requieren una ubicación de origen.")
+            movement = WarehouseService.create_exit(
+                product_id=obj.product_id,
+                quantity=obj.quantity,
+                location_from_id=obj.location_from_id,
+                unit_price=obj.unit_price or 0,
+                source_type=obj.source_type or 'MANUAL',
+                source_reference=obj.source_reference or '',
+                note=obj.note or '',
+                user=user,
+                company=obj.company,
+            )
+
+        elif obj.type == 'TRANSFER':
+            if not obj.location_from_id or not obj.location_to_id:
+                raise ValidationError(
+                    "Los traslados requieren ubicación de origen y destino."
+                )
+            movement = WarehouseService.create_transfer(
+                product_id=obj.product_id,
+                quantity=obj.quantity,
+                location_from_id=obj.location_from_id,
+                location_to_id=obj.location_to_id,
+                unit_price=obj.unit_price or 0,
+                note=obj.note or '',
+                user=user,
+                company=obj.company,
+            )
+
+        elif obj.type == 'ADJUSTMENT':
+            # Los ajustes se manejan desde PhysicalCount, no desde aquí.
+            # Si permites crearlos manualmente, aquí iría la lógica.
+            raise ValidationError(
+                "Los ajustes de inventario se crean desde 'Ajustes de Inventario', "
+                "no desde 'Movimientos'."
+            )
+
+        else:
+            raise ValidationError(f"Tipo de movimiento no soportado: {obj.type}")
+
+        # ✅ CLAVE: reasignar form.instance con el Movement recién creado
+        #    para que el admin no intente guardarlo de nuevo (evita duplicados).
+        form.instance = movement
+        obj.pk = movement.pk
+        logger.info(
+            "✅ [MovementAdmin.save_model] Movimiento %s creado y aplicado al inventario",
+            movement.pk,
+        )
 
     @admin.display(description='Precio (USD)')
     def unit_price_usd_display(self, obj):
@@ -304,6 +416,20 @@ class MovementAdmin(CompanyFilterMixin, UnfoldModelAdmin, SimpleHistoryAdmin):
         except:
             return "Error"
 
+    def get_readonly_fields(self, request, obj=None):
+        if obj: # Modo edición
+            return ['product', 'type', 'quantity', 'unit_price', 'location_from', 'location_to', 'company', 'total', 'user', 'created_at']
+        # Modo creación
+        return ['total', 'user', 'created_at']
+
+    def get_form(self, request, obj=None, **kwargs):
+        form = super().get_form(request, obj, **kwargs)
+        if obj is None and 'unit_price' in form.base_fields:
+            # Ocultamos el input y ponemos un texto explicativo
+            form.base_fields['unit_price'].disabled = True
+            form.base_fields['unit_price'].help_text = "El costo se toma automáticamente de la ficha del producto."
+        return form
+
 
 # ============================================================
 # ADMIN: INVENTARIO CONTABLE
@@ -321,10 +447,8 @@ class InventoryAdmin(CompanyFilterMixin, UnfoldModelAdmin):
         'total_entries_display',
         'total_exits_display',
         'quantity',
-        'purchase_price_usd_display',
-        'purchase_price_bs_display',
-        'sale_price_usd_display',
-        'sale_price_bs_display',
+        'avg_cost_usd_display',
+        'total_value_display',
     ]
     
     list_filter = ['company', 'location']
@@ -382,29 +506,13 @@ class InventoryAdmin(CompanyFilterMixin, UnfoldModelAdmin):
     # PRECIO DE COMPRA (USD y Bs.)
     # ============================================================
     
-    @admin.display(description='Precio Compra (USD)')
-    def purchase_price_usd_display(self, obj):
-        return obj.product.purchase_price or 0
+    @admin.display(description='Costo Prom. (USD)', ordering='total_value')
+    def avg_cost_usd_display(self, obj):
+        return f"$ {obj.average_cost:.2f}"
 
-    @admin.display(description='Precio Compra (Bs.)')
-    def purchase_price_bs_display(self, obj):
-        from decimal import Decimal
-        rate = self.get_exchange_rate()
-        if rate > 0 and obj.product.purchase_price:
-            return obj.product.purchase_price * Decimal(str(rate))
-        return 'Sin tasa'
-
-    @admin.display(description='Precio Venta (USD)')
-    def sale_price_usd_display(self, obj):
-        return obj.product.sale_price or 0
-
-    @admin.display(description='Precio Venta (Bs.)')
-    def sale_price_bs_display(self, obj):
-        from decimal import Decimal
-        rate = self.get_exchange_rate()
-        if rate > 0 and obj.product.sale_price:
-            return obj.product.sale_price * Decimal(str(rate))
-        return 'Sin tasa'
+    @admin.display(description='Valor Total (USD)')
+    def total_value_display(self, obj):
+        return f"$ {obj.total_value:.2f}"
     
     # ============================================================
     # CHANGELIST_VIEW - Con tasa de cambio en el contexto

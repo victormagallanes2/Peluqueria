@@ -300,6 +300,19 @@ class Inventory(models.Model):
             ("can_view_inventory", "Puede ver inventarios"),
             ("can_edit_inventory", "Puede editar inventarios"),
         ]
+
+    @property
+    def average_cost(self):
+        """
+        Devuelve el costo unitario promedio calculado a partir del valor total.
+        (Aunque en esta simplificación usamos Precio Estándar, la matemática 
+        se mantiene consistente si el precio de referencia no cambia).
+        """
+        if not self.quantity or self.quantity == 0:
+            return self.product.purchase_price or 0
+        return (Decimal(str(self.total_value or 0)) / Decimal(str(self.quantity))).quantize(
+            Decimal('0.01')
+        )
     
     def __str__(self):
         return f"{self.product.name} - {self.location.code}: {self.quantity}"

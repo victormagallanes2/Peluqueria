@@ -417,10 +417,10 @@ class InventoryService:
             if movement.type == 'ENTRY':
                 logger.info("   📥 Procesando ENTRADA...")
                 new_quantity = old_quantity + movement.quantity
+                reference_cost = Decimal(str(movement.product.purchase_price or 0))
                 new_total_value = (
                     Decimal(str(inventory.total_value or 0))
-                    + Decimal(str(movement.quantity))
-                    * Decimal(str(movement.unit_price or 0))
+                    + Decimal(str(movement.quantity)) * reference_cost
                 )
                 logger.info(f"   Nueva cantidad: {new_quantity}")
 
