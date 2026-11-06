@@ -50,18 +50,18 @@ def get_menu_items(request):
                 "icon": "inventory_2",
                 "link": "/admin/inventory/product/",
             })
-        if user.has_perm('inventory.view_deliverynote'):
-            inventory_items.append({
-                "title": "Notas de Entrega",
-                "icon": "fact_check",
-                "link": "/admin/inventory/deliverynote/",
-            })
-        if user.has_perm('inventory.view_receiptnote'):
-            inventory_items.append({
-                "title": "Notas de Recibo",
-                "icon": "move_up",
-                "link": "/admin/inventory/receiptnote/",
-            })
+        # if user.has_perm('inventory.view_deliverynote'):
+        #     inventory_items.append({
+        #         "title": "Notas de Entrega",
+        #         "icon": "fact_check",
+        #         "link": "/admin/inventory/deliverynote/",
+        #     })
+        # if user.has_perm('inventory.view_receiptnote'):
+        #     inventory_items.append({
+        #         "title": "Notas de Recibo",
+        #         "icon": "move_up",
+        #         "link": "/admin/inventory/receiptnote/",
+        #     })
         if user.has_perm('inventory.view_location'):
             inventory_items.append({
                 "title": "Ubicaciones",
@@ -86,37 +86,37 @@ def get_menu_items(request):
     # ============================================================
     # COMPRAS
     # ============================================================
-    if (user.has_perm('purchasing.view_supplier') 
-        or user.has_perm('purchasing.view_purchaseorder')):
+    # if (user.has_perm('purchasing.view_supplier') 
+    #     or user.has_perm('purchasing.view_purchaseorder')):
         
-        purchasing_items = []
+    #     purchasing_items = []
         
-        if user.has_perm('purchasing.view_supplier'):
-            purchasing_items.append({
-                "title": "Proveedores",
-                "icon": "business",
-                "link": "/admin/purchasing/supplier/",
-            })
-        if user.has_perm('purchasing.view_purchaseorder'):
-            purchasing_items.append({
-                "title": "Órdenes de Compras",
-                "icon": "shopping_cart",
-                "link": "/admin/purchasing/purchaseorder/",
-            })
-        if user.has_perm('purchasing.view_purchaseinvoice'):
-            purchasing_items.append({
-                "title": "Facturas de Compra",
-                "icon": "receipt",
-                "link": "/admin/purchasing/purchaseinvoice/",
-            })
+    #     if user.has_perm('purchasing.view_supplier'):
+    #         purchasing_items.append({
+    #             "title": "Proveedores",
+    #             "icon": "business",
+    #             "link": "/admin/purchasing/supplier/",
+    #         })
+    #     if user.has_perm('purchasing.view_purchaseorder'):
+    #         purchasing_items.append({
+    #             "title": "Órdenes de Compras",
+    #             "icon": "shopping_cart",
+    #             "link": "/admin/purchasing/purchaseorder/",
+    #         })
+    #     if user.has_perm('purchasing.view_purchaseinvoice'):
+    #         purchasing_items.append({
+    #             "title": "Facturas de Compra",
+    #             "icon": "receipt",
+    #             "link": "/admin/purchasing/purchaseinvoice/",
+    #         })
         
-        if purchasing_items:
-            navigation.append({
-                "title": "Compras",
-                "separator": True,
-                "collapsible": True,
-                "items": purchasing_items,
-            })
+    #     if purchasing_items:
+    #         navigation.append({
+    #             "title": "Compras",
+    #             "separator": True,
+    #             "collapsible": True,
+    #             "items": purchasing_items,
+    #         })
     
     # ============================================================
     # VENTAS
@@ -170,110 +170,103 @@ def get_menu_items(request):
                 "collapsible": True,
                 "items": sales_items,
             })
-    
-    # ============================================================
-    # CONTABILIDAD
-    # ============================================================
-    if (user.has_perm('accounting.view_tax')
-        or user.has_perm('accounting.view_taxrate')
-        or user.has_perm('accounting.view_exchangerate')):
-        
-        accounting_items = []
-        
-        if user.has_perm('accounting.view_tax'):
-            accounting_items.append({
-                "title": "Tipos de Impuestos",
-                "icon": "receipt",
-                "link": "/admin/accounting/tax/",
-            })
-        if user.has_perm('accounting.view_taxrate'):
-            accounting_items.append({
-                "title": "Tasas de Impuesto",
-                "icon": "percent",
-                "link": "/admin/accounting/taxrate/",
-            })
-        if user.has_perm('accounting.view_exchangerate'):
-            accounting_items.append({
-                "title": "Tasas de Cambio",
-                "icon": "swap_horiz",
-                "link": "/admin/accounting/exchangerate/",
-            })
-        
-        if accounting_items:
-            navigation.append({
-                "title": "Contabilidad",
-                "separator": True,
-                "collapsible": True,
-                "items": accounting_items,
-            })
-    
-    # ============================================================
-    # RECURSOS HUMANOS
-    # ============================================================
-    if (user.has_perm('rrhh.view_employee') 
-        or user.has_perm('rrhh.view_commission')):
-        
-        rrhh_items = []
-        
-        if user.has_perm('rrhh.view_employee'):
-            rrhh_items.append({
-                "title": "Empleados",
-                "icon": "badge",
-                "link": "/admin/rrhh/employee/",
-            })
+
+
         if user.has_perm('rrhh.view_commission'):
-            rrhh_items.append({
+            sales_items.append({
                 "title": "Comisiones",
                 "icon": "payments",
                 "link": "/admin/rrhh/commission/",
             })
+    
+    # ============================================================
+    # CONTABILIDAD
+    # ============================================================
+    # if (user.has_perm('accounting.view_tax')
+    #     or user.has_perm('accounting.view_taxrate')
+    #     or user.has_perm('accounting.view_exchangerate')):
         
-        if rrhh_items:
-            navigation.append({
-                "title": "Recursos Humanos",
-                "separator": True,
-                "collapsible": True,
-                "items": rrhh_items,
-            })
+    #     accounting_items = []
+        
+    #     if user.has_perm('accounting.view_tax'):
+    #         accounting_items.append({
+    #             "title": "Tipos de Impuestos",
+    #             "icon": "receipt",
+    #             "link": "/admin/accounting/tax/",
+    #         })
+    #     if user.has_perm('accounting.view_taxrate'):
+    #         accounting_items.append({
+    #             "title": "Tasas de Impuesto",
+    #             "icon": "percent",
+    #             "link": "/admin/accounting/taxrate/",
+    #         })
 
-    if user.has_perm('web.view_webpage'):
-        navigation.append({
-            "title": "Web",
-            "separator": True,
-            "collapsible": True,
-            "items": [
-                {
-                    "title": "Mis páginas",
-                    "icon": "web",
-                    "link": "/admin/web/webpage/",
-                },
-                {
-                    "title": "Visitas",
-                    "icon": "analytics",
-                    "link": "/admin/web/webpagevisit/",
-                },
-            ],
-        })
+        
+    #     if accounting_items:
+    #         navigation.append({
+    #             "title": "Contabilidad",
+    #             "separator": True,
+    #             "collapsible": True,
+    #             "items": accounting_items,
+    #         })
+    
+    # ============================================================
+    # RECURSOS HUMANOS
+    # ============================================================
+    # if (user.has_perm('rrhh.view_employee') 
+    #     or user.has_perm('rrhh.view_commission')):
+        
+    #     rrhh_items = []
+        
 
 
-    if user.has_perm('crm.view_lead'):
-        navigation.append({
-            "title": "CRM",
-            "separator": True,
-            "collapsible": True,
-            "items": [
-                {
-                    "title": "Leads",
-                    "icon": "person_search",
-                    "link": "/admin/crm/lead/",
-                },
-                {
-                    "title": "Pipeline Kanban", # ✅ NUEVO ENLACE
-                    "icon": "view_kanban",
-                    "link": "/admin/crm/lead/kanban/",
-                },
-            ],
-        })
+        
+    #     if rrhh_items:
+    #         navigation.append({
+    #             "title": "Recursos Humanos",
+    #             "separator": True,
+    #             "collapsible": True,
+    #             "items": rrhh_items,
+    #         })
+
+    # if user.has_perm('web.view_webpage'):
+    #     navigation.append({
+    #         "title": "Web",
+    #         "separator": True,
+    #         "collapsible": True,
+    #         "items": [
+    #             {
+    #                 "title": "Mis páginas",
+    #                 "icon": "web",
+    #                 "link": "/admin/web/webpage/",
+    #             },
+    #             {
+    #                 "title": "Visitas",
+    #                 "icon": "analytics",
+    #                 "link": "/admin/web/webpagevisit/",
+    #             },
+    #         ],
+    #     })
+
+
+    # if user.has_perm('crm.view_lead'):
+    #     navigation.append({
+    #         "title": "CRM",
+    #         "separator": True,
+    #         "collapsible": True,
+    #         "items": [
+    #             {
+    #                 "title": "Leads",
+    #                 "icon": "person_search",
+    #                 "link": "/admin/crm/lead/",
+    #             },
+    #             {
+    #                 "title": "Pipeline Kanban", 
+    #                 "icon": "view_kanban",
+    #                 "link": "/admin/crm/lead/kanban/",
+    #             },
+    #         ],
+    #     })
     # ============================================================
     # CONFIGURACIÓN (solo superuser)
     # ============================================================
@@ -294,6 +287,12 @@ def get_menu_items(request):
                     "link": "/admin/users/user/",
                 },
                 {
+                    "title": "Empleados",
+                    "icon": "badge",
+                    "link": "/admin/rrhh/employee/",
+                },
+
+                {
                     "title": "Grupos",
                     "icon": "group",
                     "link": "/admin/auth/group/",
@@ -303,6 +302,12 @@ def get_menu_items(request):
                     "icon": "attach_money",
                     "link": "/admin/configuration/currency/",
                 },
+                {
+                    "title": "Tasas de Cambio",
+                    "icon": "swap_horiz",
+                    "link": "/admin/accounting/exchangerate/",
+                },
+
                 {
                     "title": "Métodos de Pago",
                     "icon": "payments",

@@ -1,0 +1,68 @@
+{% extends "admin/index.html" %}
+{% load i18n %}
+{% load log %}
+
+{% block content %}
+<div class="p-6">
+
+    <!-- ========================================== -->
+    <!-- SECCIÓN DE MÓDULOS (Personaliza aquí)      -->
+    <!-- ========================================== -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        
+        <!-- Módulo: Inventario -->
+  
+
+        <!-- Módulo: Ventas -->
+ 
+    </div>
+
+    <!-- ========================================== -->
+    <!-- SECCIÓN DE ACCIONES RECIENTES (Opcional)   -->
+    <!-- ========================================== -->
+    <!-- Si quieres eliminar las acciones recientes por completo, deja este bloque fuera -->
+<div class="mt-8">
+    <h2 class="text-xl font-bold mb-4 text-gray-800 dark:text-gray-100">{% trans 'Recent actions' %}</h2>
+    
+    {# Obtiene las últimas 10 acciones del usuario actual y las guarda en la variable admin_log #}
+    {% get_admin_log 10 as admin_log for_user user %}
+    
+    {% if not admin_log %}
+        <p class="text-gray-500 text-sm">{% trans 'None available' %}</p>
+    {% else %}
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700 overflow-hidden">
+            <ul class="divide-y divide-gray-200 dark:divide-gray-700">
+                {% for entry in admin_log %}
+                    <li class="p-4 flex items-center justify-between hover:bg-gray-50 dark:hover:bg-gray-700/50">
+                        <div class="flex items-center gap-3">
+                            {# Icono según el tipo de acción #}
+                            {% if entry.is_addition %}
+                                <span class="text-green-500 text-lg">+</span>
+                            {% elif entry.is_change %}
+                                <span class="text-yellow-500 text-lg">✎</span>
+                            {% elif entry.is_deletion %}
+                                <span class="text-red-500 text-lg">✕</span>
+                            {% endif %}
+
+                            <div>
+                                {% if entry.is_deletion or not entry.get_admin_url %}
+                                    <span class="font-medium text-gray-700 dark:text-gray-300">{{ entry.object_repr }}</span>
+                                {% else %}
+                                    <a href="{{ entry.get_admin_url }}" class="font-medium text-blue-600 hover:underline dark:text-blue-400">
+                                        {{ entry.object_repr }}
+                                    </a>
+                                {% endif %}
+                                <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                                    {{ entry.content_type.name|capfirst }} — {{ entry.action_time|date:"d M Y H:i" }}
+                                </p>
+                            </div>
+                        </div>
+                    </li>
+                {% endfor %}
+            </ul>
+        </div>
+    {% endif %}
+</div>
+
+</div>
+{% endblock %}
